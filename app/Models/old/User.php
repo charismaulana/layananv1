@@ -127,25 +127,14 @@ class User extends Authenticatable
     public function hasRole(string $slug): bool
     {
         if (!$this->role) return false;
-        $userRole = $this->role->slug;
-        if ($userRole === $slug) return true;
+        if ($this->role->slug === $slug) return true;
 
-        $gsRoles       = ['gs', 'admin-departemen', 'system-admin'];
-        $userRoles     = ['user', 'pep', 'user-pep', 'user-non-pep', 'kontraktor', 'management'];
-        $cateringRoles = ['catering'];
-
-        if ($slug === 'gs' && in_array($userRole, $gsRoles)) return true;
-        if ($slug === 'user' && in_array($userRole, $userRoles)) return true;
-        if ($slug === 'catering' && in_array($userRole, $cateringRoles)) return true;
-
-        if ($slug === 'system-admin' && $userRole === 'system-admin') return true;
-        if ($slug === 'admin-departemen' && $userRole === 'admin-departemen') return true;
-        if ($slug === 'kontraktor' && $userRole === 'kontraktor') return true;
-        if ($slug === 'management' && $userRole === 'management') return true;
-        if ($slug === 'pep' && in_array($userRole, ['pep', 'user-pep'])) return true;
-        if ($slug === 'non-pep' && in_array($userRole, ['user-non-pep', 'kontraktor'])) return true;
-
-        return false;
+        return in_array($slug, match($this->role->slug) {
+            'user'     => ['user', 'pep', 'user-pep', 'user-non-pep', 'kontraktor', 'management'],
+            'gs'       => ['gs', 'admin-departemen', 'system-admin'],
+            'catering' => ['catering'],
+            default    => []
+        });
     }
 
     public function isUser(): bool       { return $this->hasRole('user'); }

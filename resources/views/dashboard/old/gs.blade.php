@@ -3,7 +3,10 @@
 @section('page-title', 'Dashboard GS')
 
 @section('content')
-<div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:20px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <a href="{{ route('admin.mess.index') }}" class="btn btn-outline btn-sm" style="background:#fff;font-weight:700;display:inline-flex;align-items:center;gap:6px">
+        <span>🛏️</span> Dashboard Mess
+    </a>
     <form method="GET" style="display:flex;align-items:center;margin:0">
         <input type="date" name="date" value="{{ $date->format('Y-m-d') }}" onchange="this.form.submit()" class="form-input" style="font-weight:600">
     </form>

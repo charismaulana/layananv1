@@ -19,7 +19,7 @@
 
     // Build bottom navigation items per role (3 Roles: User, GS, Catering)
     $navItems = [];
-    if ($u->isGS() || $u->isSysAdmin() || $u->isAdminDept()) {
+    if ($u->isGS()) {
         $navItems = [
             ['route'=>'beranda',            'label'=>'Beranda',    'icon'=>'home'],
             ['route'=>'dashboard',          'label'=>'Kendali',    'icon'=>'chart'],
@@ -156,14 +156,7 @@
 @php $navCount = count($navItems); $isCompact = $navCount >= 6; @endphp
 <nav id="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8edf2;height:{{ $isCompact ? '54px' : '60px' }};display:grid;grid-template-columns:repeat({{ $navCount }}, 1fr);z-index:45;box-shadow:0 -2px 10px rgba(0,0,0,.03)">
     @foreach($navItems as $item)
-    @php
-        $parts = explode('.', $item['route']);
-        $wildcard = count($parts) > 1 ? $parts[0] . '.*' : $item['route'] . '*';
-        if ($parts[0] === 'admin' && isset($parts[1])) {
-            $wildcard = "admin.{$parts[1]}.*";
-        }
-        $active = request()->routeIs($item['route']) || request()->routeIs($item['route'].'*') || request()->routeIs($wildcard);
-    @endphp
+    @php $active = request()->routeIs($item['route'].'*') || request()->routeIs($item['route']); @endphp
     <a href="{{ route($item['route']) }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5px;text-decoration:none;color:{{ $active ? '#006738' : '#9ca3af' }};position:relative;padding:0 1px">
         @if($active)<div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:{{ $isCompact ? '22px' : '28px' }};height:2.5px;background:#006738;border-radius:0 0 4px 4px"></div>@endif
         @include('layouts._icon', ['name'=>$item['icon'], 'active'=>$active, 'size'=>$isCompact ? 18 : 20])

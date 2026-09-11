@@ -309,8 +309,6 @@
     </div>
 </div>
 
-<div style="height:30px"></div>
-
 {{-- Responsive CSS untuk Grid Desktop --}}
 <style>
 @media(min-width:640px) {
