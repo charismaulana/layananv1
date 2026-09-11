@@ -104,7 +104,7 @@
 
 {{-- ── 4. INSTANT SEARCH BAR (Sangat Membantu di Mobile) ── --}}
 <div style="position:relative;margin-bottom:16px">
-    <input type="text" id="messSearchInput" onkeyup="filterMessCards()"
+    <input type="text" id="messSearchInput" onkeyup="filterMessRows()"
            placeholder="🔍 Cari nomor kamar, blok, atau nama pekerja..."
            class="form-input"
            style="padding:10px 14px 10px 38px;font-size:13px;border-radius:10px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
@@ -118,171 +118,173 @@
     </button>
 </div>
 
-{{-- ── 5. DAFTAR KAMAR MESS (CARD KONSEP) ── --}}
+{{-- ── 5. DAFTAR KAMAR MESS (TABLE VIEW) ── --}}
 <div id="messRoomsContainer">
 @forelse($roomsByRegion as $regId => $regionRooms)
     @php
-        $regionName = $regionRooms->first()->region?->name ?? 'Lainnya';
-        $roomsByBlock = $regionRooms->groupBy('block');
+        $regionName      = $regionRooms->first()->region?->name ?? 'Lainnya';
+        $regionOccupants = $regionRooms->sum(fn($r) => $r->users->count());
+        $regionOnDuty    = $regionRooms->sum(fn($r) => $r->users->filter(fn($u) => $u->rosters->first()?->status === 'Kerja')->count());
     @endphp
 
     {{-- Section Wilayah --}}
     <div class="region-section" style="margin-bottom:24px">
         {{-- Section Header --}}
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-bottom:10px;border-bottom:2px solid #e8edf2">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px;margin-bottom:10px;border-bottom:2px solid #e8edf2;flex-wrap:wrap;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
                 <span style="font-size:16px">📍</span>
                 <h3 style="font-size:14.5px;font-weight:800;color:#006738;margin:0">
                     Wilayah {{ $regionName }}
                 </h3>
             </div>
-            <span class="badge badge-gray" style="font-size:11px;font-weight:700">
-                {{ $regionRooms->count() }} Kamar
-            </span>
-        </div>
-
-        @foreach($roomsByBlock as $block => $blockRooms)
-            @if($block)
-            <div style="display:flex;align-items:center;gap:6px;margin:12px 0 8px">
-                <span style="font-size:11px;font-weight:700;color:#4b5563;background:#f3f4f6;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px">
-                    🏢 <span>{{ $block }}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+                <span class="badge badge-gray" style="font-size:11px;font-weight:700">
+                    🏠 {{ $regionRooms->count() }} Kamar
+                </span>
+                <span class="badge badge-green" style="font-size:11px;font-weight:700">
+                    👥 {{ $regionOccupants }} Penghuni ({{ $regionOnDuty }} On Duty)
                 </span>
             </div>
-            @endif
+        </div>
 
-            {{-- Grid Kamar: 1 Kolom di Mobile, 2-3 Kolom di Desktop --}}
-            <div class="mess-grid" style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:16px">
-                @foreach($blockRooms as $room)
-                @php
-                    $occupants = $room->users;
-                    $count     = $occupants->count();
-                    $roomSearchText = strtolower($room->name . ' ' . $room->block . ' ' . $regionName . ' ' . $occupants->pluck('name')->implode(' '));
-                @endphp
-                <div class="card room-card" data-search="{{ $roomSearchText }}"
-                     style="background:#ffffff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.03);display:flex;flex-direction:column;justify-content:space-between">
+        {{-- Table Container --}}
+        <div class="card" style="overflow:hidden;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.03);margin-bottom:16px">
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+                <table class="tbl mess-table" style="width:100%;margin:0">
+                    <thead>
+                        <tr>
+                            <th style="width:45px;text-align:center">No</th>
+                            <th style="min-width:130px">Kamar & Blok</th>
+                            <th style="min-width:200px">Penghuni Terdaftar</th>
+                            <th style="min-width:150px">Departemen / Vendor</th>
+                            <th style="min-width:145px">Status Roster Hari Ini</th>
+                            <th style="min-width:115px;text-align:center">Status Kamar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($regionRooms as $room)
+                        @php
+                            $occupants = $room->users;
+                            $count     = $occupants->count();
+                            $inField   = $occupants->filter(fn($u) => $u->rosters->first()?->status === 'Kerja')->count();
+                            $roomSearchText = strtolower($room->name . ' ' . $room->block . ' ' . $regionName . ' ' . $occupants->pluck('name')->implode(' ') . ' ' . $occupants->map(fn($u) => $u->department?->name ?? ($u->company_name ?: ($u->company?->name ?? '')))->implode(' '));
+                        @endphp
+                        <tr class="room-row" data-search="{{ $roomSearchText }}">
+                            {{-- No --}}
+                            <td style="text-align:center;font-weight:700;color:#64748b;font-size:12px">
+                                {{ $loop->iteration }}
+                            </td>
 
-                    {{-- Card Header --}}
-                    <div class="card-header" style="background:#fafafa;padding:12px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:8px">
-                        <div style="display:flex;align-items:center;gap:8px;min-width:0">
-                            <span style="font-size:16px;flex-shrink:0">🛏️</span>
-                            <div style="min-width:0">
-                                <h4 style="font-size:14px;font-weight:800;color:#1a2332;margin:0;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                                    {{ $room->name }}
-                                </h4>
-                                @if($room->block)
-                                    <span style="font-size:10.5px;color:#6b7280;font-weight:600">
-                                        {{ $room->block }}
-                                    </span>
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Badge Kapasitas / Status Kamar --}}
-                        <div style="flex-shrink:0">
-                            @if($count > 0)
-                                <span class="badge badge-green" style="font-size:10.5px;font-weight:700">
-                                    👥 {{ $count }} Orang
-                                </span>
-                            @else
-                                <span class="badge badge-gray" style="font-size:10.5px;color:#9ca3af">
-                                    Kosong
-                                </span>
-                            @endif
-                        </div>
-                    </div>
-
-                    {{-- Card Body: Daftar Penghuni --}}
-                    <div class="card-body" style="padding:12px 14px;flex:1">
-                        @if($count > 0)
-                            <div style="display:flex;flex-direction:column;gap:8px">
-                                @foreach($occupants as $u)
-                                @php
-                                    $roster = $u->rosters->first();
-                                    $initials = strtoupper(substr($u->name, 0, 2));
-
-                                    if (!$roster) {
-                                        $bClass = 'badge-gray';
-                                        $bText  = 'Belum Isi';
-                                        $dClass = 'dot-gray';
-                                    } elseif ($roster->status === 'Kerja') {
-                                        $bClass = 'badge-green';
-                                        $bText  = 'Di Lapangan';
-                                        $dClass = 'dot-green';
-                                    } elseif ($roster->status === 'Libur') {
-                                        $bClass = 'badge-gold';
-                                        $bText  = 'Libur';
-                                        $dClass = 'dot-gold';
-                                    } else {
-                                        $bClass = 'badge';
-                                        $bText  = $roster->status;
-                                        $dClass = 'dot';
-                                    }
-                                @endphp
-                                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:#f8fafc;border:1px solid #eef2f6;border-radius:10px">
-                                    {{-- Avatar & Identitas Karyawan --}}
-                                    <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
-                                        <div style="width:28px;height:28px;border-radius:50%;background:#006738;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;flex-shrink:0">
-                                            {{ $initials }}
-                                        </div>
-                                        <div style="min-width:0;flex:1">
-                                            <p style="font-size:12.5px;font-weight:700;color:#1a2332;margin:0;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                                                {{ $u->name }}
-                                            </p>
-                                            <p style="font-size:10.5px;color:#6b7280;margin:2px 0 0;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                                                {{ $u->department?->name ?? ($u->company_name ?: ($u->company?->name ?? 'Karyawan')) }}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {{-- Badge Status Roster --}}
-                                    <div style="flex-shrink:0">
-                                        @if($roster && $roster->status === 'Kerja')
-                                            <span class="badge badge-green" style="font-size:10.5px;font-weight:700;padding:3px 8px">
-                                                <span class="dot dot-green"></span>Masuk
-                                            </span>
-                                        @elseif($roster && $roster->status === 'Libur')
-                                            <span class="badge badge-gold" style="font-size:10.5px;font-weight:700;padding:3px 8px">
-                                                <span class="dot dot-gold"></span>Libur
-                                            </span>
-                                        @elseif($roster && $roster->status === 'Cuti')
-                                            <span class="badge" style="background:#ede9fe;color:#6d28d9;border:1px solid #ddd6fe;font-size:10.5px;font-weight:700;padding:3px 8px">
-                                                <span class="dot" style="background:#8b5cf6"></span>Cuti
+                            {{-- Kamar & Blok --}}
+                            <td>
+                                <div style="display:flex;align-items:center;gap:6px">
+                                    <span style="font-size:14px">🛏️</span>
+                                    <div>
+                                        <p style="font-weight:800;font-size:13.5px;color:#0f172a;margin:0;line-height:1.2">
+                                            {{ $room->name }}
+                                        </p>
+                                        @if($room->block)
+                                            <span style="font-size:11px;font-weight:600;color:#475569;display:inline-block;margin-top:2px">
+                                                🏢 {{ $room->block }}
                                             </span>
                                         @else
-                                            <span class="badge badge-gray" style="font-size:10px;color:#9ca3af;padding:3px 7px" title="Belum mengisi roster pada tanggal ini">
-                                                <span class="dot dot-gray"></span>Belum Isi
-                                            </span>
+                                            <span style="font-size:11px;color:#94a3b8">-</span>
                                         @endif
                                     </div>
                                 </div>
-                                @endforeach
-                            </div>
-                        @else
-                            {{-- Empty State di dalam Card --}}
-                            <div style="padding:14px 10px;text-align:center;background:#fafafa;border:1px dashed #e2e8f0;border-radius:8px">
-                                <p style="font-size:11.5px;color:#9ca3af;margin:0">
-                                    Belum ada penghuni terdaftar
-                                </p>
-                            </div>
-                        @endif
-                    </div>
+                            </td>
 
-                    {{-- Card Footer Mini: Indikator cepat --}}
-                    @if($count > 0)
-                    @php
-                        $inField = $occupants->filter(fn($u) => $u->rosters->first()?->status === 'Kerja')->count();
-                    @endphp
-                    <div style="padding:7px 14px;background:#fafafa;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#6b7280">
-                        <span>Status Hari Ini:</span>
-                        <span style="font-weight:700;color:{{ $inField > 0 ? '#16a34a' : '#b45309' }}">
-                            {{ $inField }}/{{ $count }} Sedang di Mess/Lapangan
-                        </span>
-                    </div>
-                    @endif
-                </div>
-                @endforeach
+                            {{-- Penghuni --}}
+                            <td>
+                                @if($count > 0)
+                                    <div style="display:flex;flex-direction:column;gap:6px">
+                                        @foreach($occupants as $u)
+                                        @php $initials = strtoupper(substr($u->name, 0, 2)); @endphp
+                                        <div style="display:flex;align-items:center;gap:7px">
+                                            <div style="width:24px;height:24px;border-radius:50%;background:#006738;color:#ffffff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                                {{ $initials }}
+                                            </div>
+                                            <span style="font-weight:700;font-size:12.5px;color:#1e293b;white-space:nowrap">
+                                                {{ $u->name }}
+                                            </span>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span style="font-size:12px;color:#94a3b8;font-style:italic">Belum ada penghuni</span>
+                                @endif
+                            </td>
+
+                            {{-- Departemen / Perusahaan --}}
+                            <td>
+                                @if($count > 0)
+                                    <div style="display:flex;flex-direction:column;gap:6px">
+                                        @foreach($occupants as $u)
+                                        <div style="height:24px;display:flex;align-items:center">
+                                            <span style="font-size:12px;color:#475569;font-weight:600;white-space:nowrap">
+                                                {{ $u->department?->name ?? ($u->company_name ?: ($u->company?->name ?? '-')) }}
+                                            </span>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span style="font-size:12px;color:#cbd5e1">-</span>
+                                @endif
+                            </td>
+
+                            {{-- Status Roster Hari Ini --}}
+                            <td>
+                                @if($count > 0)
+                                    <div style="display:flex;flex-direction:column;gap:6px">
+                                        @foreach($occupants as $u)
+                                        @php $roster = $u->rosters->first(); @endphp
+                                        <div style="height:24px;display:flex;align-items:center">
+                                            @if($roster && $roster->status === 'Kerja')
+                                                <span class="badge badge-green" style="font-size:11px;font-weight:700;padding:2px 8px">
+                                                    <span class="dot dot-green"></span>Masuk (On Duty)
+                                                </span>
+                                            @elseif($roster && $roster->status === 'Libur')
+                                                <span class="badge badge-gold" style="font-size:11px;font-weight:700;padding:2px 8px">
+                                                    <span class="dot dot-gold"></span>Libur (Off Duty)
+                                                </span>
+                                            @elseif($roster && $roster->status === 'Cuti')
+                                                <span class="badge" style="background:#ede9fe;color:#6d28d9;border:1px solid #ddd6fe;font-size:11px;font-weight:700;padding:2px 8px">
+                                                    <span class="dot" style="background:#8b5cf6"></span>Cuti
+                                                </span>
+                                            @else
+                                                <span class="badge badge-gray" style="font-size:10.5px;color:#9ca3af;padding:2px 7px" title="Belum mengisi roster pada tanggal ini">
+                                                    <span class="dot dot-gray"></span>Belum Isi
+                                                </span>
+                                            @endif
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span style="font-size:12px;color:#cbd5e1">-</span>
+                                @endif
+                            </td>
+
+                            {{-- Kapasitas & Status Kamar --}}
+                            <td style="text-align:center">
+                                @if($count > 0)
+                                    <span class="badge badge-green" style="font-size:11px;font-weight:700;padding:3px 9px">
+                                        👥 {{ $count }} Orang
+                                    </span>
+                                    <span style="font-size:10.5px;font-weight:700;display:block;margin-top:3px;color:{{ $inField > 0 ? '#16a34a' : '#b45309' }};white-space:nowrap">
+                                        {{ $inField }}/{{ $count }} On Duty
+                                    </span>
+                                @else
+                                    <span class="badge badge-gray" style="font-size:10.5px;color:#94a3b8;padding:2px 8px">
+                                        Kosong
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        @endforeach
+        </div>
     </div>
 @empty
     {{-- Global Empty State --}}
@@ -311,34 +313,38 @@
 
 <div style="height:30px"></div>
 
-{{-- Responsive CSS untuk Grid Desktop --}}
+{{-- Styling Khusus Tabel Mess --}}
 <style>
-@media(min-width:640px) {
-    .mess-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 14px !important;
-    }
+.mess-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 11px 14px;
+    background: #f8fafc;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
 }
-@media(min-width:1024px) {
-    .mess-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 16px !important;
-    }
+.mess-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
 }
-@media(min-width:1440px) {
-    .mess-grid {
-        grid-template-columns: repeat(4, 1fr) !important;
-    }
+.mess-table tr:last-child td {
+    border-bottom: none;
+}
+.mess-table tr:hover td {
+    background: #f8fafc;
 }
 </style>
 
 @push('scripts')
 <script>
-function filterMessCards() {
+function filterMessRows() {
     var input = document.getElementById('messSearchInput');
     var query = input.value.toLowerCase().trim();
     var clearBtn = document.getElementById('clearSearchBtn');
-    var cards = document.querySelectorAll('.room-card');
+    var rows = document.querySelectorAll('.room-row');
     var sections = document.querySelectorAll('.region-section');
     var noResult = document.getElementById('noSearchResult');
 
@@ -346,20 +352,20 @@ function filterMessCards() {
 
     var totalVisible = 0;
 
-    cards.forEach(function(card) {
-        var text = card.getAttribute('data-search') || '';
+    rows.forEach(function(row) {
+        var text = row.getAttribute('data-search') || '';
         if (!query || text.indexOf(query) !== -1) {
-            card.style.display = 'flex';
+            row.style.display = '';
             totalVisible++;
         } else {
-            card.style.display = 'none';
+            row.style.display = 'none';
         }
     });
 
     // Sembunyikan section wilayah jika tidak ada kamar yang cocok
     sections.forEach(function(sec) {
-        var visibleInSec = sec.querySelectorAll('.room-card[style*="display: flex"]').length;
-        sec.style.display = (visibleInSec > 0 || !query) ? 'block' : 'none';
+        var visibleRows = sec.querySelectorAll('.room-row:not([style*="display: none"])');
+        sec.style.display = (visibleRows.length > 0 || !query) ? 'block' : 'none';
     });
 
     if (noResult) {
@@ -371,7 +377,7 @@ function clearMessSearch() {
     var input = document.getElementById('messSearchInput');
     if (input) {
         input.value = '';
-        filterMessCards();
+        filterMessRows();
         input.focus();
     }
 }

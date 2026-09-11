@@ -7,27 +7,16 @@
     $isToday = $date->isToday();
 @endphp
 
-{{-- ── 1. HEADER BANNER ── --}}
-<div style="background:linear-gradient(135deg, #006738 0%, #004d28 100%);border-radius:14px;padding:14px 18px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 14px rgba(0,103,56,.14);color:#ffffff">
-    <div style="position:absolute;top:-25px;right:-25px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.07)"></div>
-    <div style="position:absolute;bottom:-35px;right:40px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.04)"></div>
-
-    <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:22px">🛏️</span>
-            <p style="font-size:14px;font-weight:800;color:#ffffff;margin:0">Mess — {{ $date->translatedFormat('d M Y') }}</p>
-        </div>
-
-        {{-- Pemilih Tanggal --}}
-        <form method="GET" action="{{ route('admin.mess.index') }}" id="dateForm" style="display:flex;align-items:center;gap:6px;margin:0">
-            @if($regionId)
-                <input type="hidden" name="region" value="{{ $regionId }}">
-            @endif
-            <input type="date" name="date" value="{{ $date->format('Y-m-d') }}" onchange="this.form.submit()"
-                   class="form-input"
-                   style="padding:6px 10px;font-size:12px;font-weight:700;border-radius:8px;background:rgba(255,255,255,0.95);color:#1a2332;border:none;box-shadow:0 2px 6px rgba(0,0,0,0.1);max-width:145px">
-        </form>
-    </div>
+{{-- ── 1. HEADER DATE FILTER (Sesuai Menu Lain) ── --}}
+<div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:16px">
+    <form method="GET" action="{{ route('admin.mess.index') }}" id="dateForm" style="display:flex;align-items:center;margin:0">
+        @if($regionId)
+            <input type="hidden" name="region" value="{{ $regionId }}">
+        @endif
+        <input type="date" name="date" value="{{ $date->format('Y-m-d') }}" onchange="this.form.submit()"
+               class="form-input"
+               style="font-weight:600;font-size:13px;background:#ffffff;border:1.5px solid #cbd5e1;border-radius:10px;padding:7px 12px;color:#1e293b;box-shadow:0 1px 2px rgba(0,0,0,0.03)">
+    </form>
 </div>
 
 {{-- ── 2. METRIC / KPI CARDS (Konsep Card Standar Aplikasi) ── --}}
@@ -102,12 +91,12 @@
     </div>
 </div>
 
-{{-- ── 4. INSTANT SEARCH BAR (Sangat Membantu di Mobile) ── --}}
-<div style="position:relative;margin-bottom:16px">
+{{-- ── 4. INSTANT SEARCH BAR (Lebar kolom rapi & teratur) ── --}}
+<div style="position:relative;margin-bottom:16px;max-width:380px;width:100%">
     <input type="text" id="messSearchInput" onkeyup="filterMessRows()"
-           placeholder="🔍 Cari nomor kamar, blok, atau nama pekerja..."
+           placeholder="Cari blok, kamar, atau nama pekerja..."
            class="form-input"
-           style="padding:10px 14px 10px 38px;font-size:13px;border-radius:10px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+           style="padding:10px 34px 10px 38px;font-size:13px;border-radius:10px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.03);width:100%">
     <svg width="16" height="16" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"
          style="position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -154,10 +143,10 @@
                     <thead>
                         <tr>
                             <th style="width:45px;text-align:center">No</th>
-                            <th style="min-width:130px">Kamar & Blok</th>
+                            <th style="min-width:120px">Blok & Kamar</th>
                             <th style="min-width:200px">Penghuni Terdaftar</th>
-                            <th style="min-width:150px">Departemen / Vendor</th>
-                            <th style="min-width:145px">Status Roster Hari Ini</th>
+                            <th style="min-width:140px">Dept.</th>
+                            <th style="min-width:140px">Roster Hari Ini</th>
                             <th style="min-width:115px;text-align:center">Status Kamar</th>
                         </tr>
                     </thead>
@@ -167,7 +156,7 @@
                             $occupants = $room->users;
                             $count     = $occupants->count();
                             $inField   = $occupants->filter(fn($u) => $u->rosters->first()?->status === 'Kerja')->count();
-                            $roomSearchText = strtolower($room->name . ' ' . $room->block . ' ' . $regionName . ' ' . $occupants->pluck('name')->implode(' ') . ' ' . $occupants->map(fn($u) => $u->department?->name ?? ($u->company_name ?: ($u->company?->name ?? '')))->implode(' '));
+                            $roomSearchText = strtolower(($room->block ?? '') . ' ' . $room->name . ' ' . $regionName . ' ' . $occupants->pluck('name')->implode(' ') . ' ' . $occupants->map(fn($u) => $u->department?->name ?? ($u->company_name ?: ($u->company?->name ?? '')))->implode(' '));
                         @endphp
                         <tr class="room-row" data-search="{{ $roomSearchText }}">
                             {{-- No --}}
@@ -175,35 +164,24 @@
                                 {{ $loop->iteration }}
                             </td>
 
-                            {{-- Kamar & Blok --}}
+                            {{-- Blok & Kamar --}}
                             <td>
-                                <div style="display:flex;align-items:center;gap:6px">
-                                    <span style="font-size:14px">🛏️</span>
-                                    <div>
-                                        <p style="font-weight:800;font-size:13.5px;color:#0f172a;margin:0;line-height:1.2">
-                                            {{ $room->name }}
-                                        </p>
-                                        @if($room->block)
-                                            <span style="font-size:11px;font-weight:600;color:#475569;display:inline-block;margin-top:2px">
-                                                🏢 {{ $room->block }}
-                                            </span>
-                                        @else
-                                            <span style="font-size:11px;color:#94a3b8">-</span>
-                                        @endif
-                                    </div>
+                                <div>
+                                    <p style="font-weight:800;font-size:13.5px;color:#0f172a;margin:0;line-height:1.2">
+                                        {{ $room->block ?: '-' }}
+                                    </p>
+                                    <span style="font-size:11.5px;font-weight:600;color:#64748b;display:inline-block;margin-top:2px">
+                                        {{ $room->name }}
+                                    </span>
                                 </div>
                             </td>
 
-                            {{-- Penghuni --}}
+                            {{-- Penghuni Terdaftar (Tanpa logo/avatar, hanya isi nama saja) --}}
                             <td>
                                 @if($count > 0)
                                     <div style="display:flex;flex-direction:column;gap:6px">
                                         @foreach($occupants as $u)
-                                        @php $initials = strtoupper(substr($u->name, 0, 2)); @endphp
-                                        <div style="display:flex;align-items:center;gap:7px">
-                                            <div style="width:24px;height:24px;border-radius:50%;background:#006738;color:#ffffff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                                                {{ $initials }}
-                                            </div>
+                                        <div style="height:24px;display:flex;align-items:center">
                                             <span style="font-weight:700;font-size:12.5px;color:#1e293b;white-space:nowrap">
                                                 {{ $u->name }}
                                             </span>
@@ -215,7 +193,7 @@
                                 @endif
                             </td>
 
-                            {{-- Departemen / Perusahaan --}}
+                            {{-- Dept. --}}
                             <td>
                                 @if($count > 0)
                                     <div style="display:flex;flex-direction:column;gap:6px">
@@ -232,7 +210,7 @@
                                 @endif
                             </td>
 
-                            {{-- Status Roster Hari Ini --}}
+                            {{-- Roster Hari Ini --}}
                             <td>
                                 @if($count > 0)
                                     <div style="display:flex;flex-direction:column;gap:6px">
@@ -287,9 +265,9 @@
         </div>
     </div>
 @empty
-    {{-- Global Empty State --}}
+    {{-- Global Empty State (Tanpa logo kamar tidur) --}}
     <div class="card" style="padding:40px 20px;text-align:center;border-radius:14px">
-        <span style="font-size:36px;display:block;margin-bottom:10px">🛏️</span>
+        <span style="font-size:36px;display:block;margin-bottom:10px">🏠</span>
         <h4 style="font-size:15px;font-weight:700;color:#1a2332;margin:0 0 6px">Belum Ada Data Kamar</h4>
         <p style="font-size:12.5px;color:#6b7280;margin:0 0 16px">Kamar mess belum ditambahkan untuk wilayah ini.</p>
         <a href="{{ route('admin.master.index', ['tab' => 'rooms']) }}" class="btn btn-primary btn-sm">
